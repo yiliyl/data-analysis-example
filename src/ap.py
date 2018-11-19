@@ -3,6 +3,7 @@ import csv
 import json
 from collections import namedtuple
 from itertools import combinations
+from operator import itemgetter, attrgetter
 import datetime
 
 
@@ -68,7 +69,7 @@ RelationRecord = namedtuple(
     'RelationRecord', SupportRecord._fields + ('detail_records',))
 DetailRecord = namedtuple(
     'DetailRecord', ('item_base', 'item_add', 'confidence', 'lift'))
-
+FullRecord = namedtuple('FullRecord',SupportRecord._fields+DetailRecord._fields)
 
 def load_trans(input_file):
     with open(input_file, 'r') as csvfile:
@@ -81,12 +82,12 @@ def apriori(transactions, max_length, min_support, min_confidence, min_lift):
     transaction_manager = TransactionManager.create(transactions)
     support_records = get_support(transaction_manager, min_support, max_length)
     for record in support_records:
-        detail_reocords = get_confidence_lift(
+        detail_records = get_confidence_lift(
             transaction_manager, record, min_confidence, min_lift)
-        detail_reocords = list(detail_reocords)  # convert generator to list
-        if not detail_reocords:
+        detail_records = list(detail_records)  # convert generator to list
+        if not detail_records:
             continue
-        yield RelationRecord(record.items, record.support, detail_reocords)
+        yield RelationRecord(record.items, record.support, detail_records)
 
 
 def get_next_candidates(prev_candidates, length):
@@ -136,7 +137,7 @@ def get_confidence_lift(transaction_manager, support_record, min_confidence, min
             confidence = support_record.support / \
                 transaction_manager.calculate_support(item_base)
             if transaction_manager.calculate_support(item_add) == 0:
-                print('jjjj')
+                print('{} not exist'.format(combination_set))
             lift = confidence/transaction_manager.calculate_support(item_add)
             if confidence < min_confidence:
                 continue
@@ -144,13 +145,23 @@ def get_confidence_lift(transaction_manager, support_record, min_confidence, min
                 continue
             yield DetailRecord(item_base, item_add, confidence, lift)
 
+def relation_records_to_full_records(relation_records):
+    for record in relation_records:
+        for detail in record.detail_records:
+            yield(FullRecord(record.items,record.support,detail.item_base,detail.item_add,detail.confidence,detail.lift))
 
-def check_if_contains_contender(items, contender='1'):
-    for item in items:
-        if contender in item:
-            return True
-    return False
+def list_top_k(full_records,keys,k = 5):
+    new_records = sorted(full_records,key=keys,reverse = True)
+    for i in range(k):
+        print_full_record(new_records[i])
 
+def print_relation_record(record):
+    print("Item {} Support {}".format(list(record.items),record.support))
+    for detail in record.detail_records:
+        print("      base{}, add {},confidence {}, lift {}".format(list(detail.item_base),list(detail.item_add),detail.confidence,detail.lift))
+
+def print_full_record(record):
+    print("Item {} Support {} base{}, add {},confidence {}, lift {}".format(list(record.items),record.support,list(record.item_base),list(record.item_add),record.confidence,record.lift))
 
 def save_to_json(relation_records, output_file, all_items=True, contender='1'):
     def default_func(value):
@@ -197,7 +208,8 @@ def main():
     relation_records = list(relation_records) # save generator to list,keep records
     save_to_json(relation_records, output_file, all_items=True)
     save_to_json(relation_records, output_file_c, all_items=False, contender='1')
-
+    full_records = relation_records_to_full_records(relation_records)
+    list_top_k(full_records,keys = attrgetter('support', 'lift'),k = 5)
 
 if __name__ == '__main__':
     main()

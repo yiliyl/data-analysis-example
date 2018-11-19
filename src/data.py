@@ -23,19 +23,19 @@ for i in range(1000):# as large as you can
         if length == 2:
             for k in range(2):
                 r = np.random.choice(['A','B','C','D'],size = length,replace= False)
-                a.append(r)
+                a.append(sorted(r))
         if length == 3 or length == 4:
             for k in range(4):
                 r = np.random.choice(['A','B','C','D','E'],size = length,replace= False)
-                a.append(r)
+                a.append(sorted(r))
         if length == 1:
             for k in range(1):
                 r = np.random.choice(['A','B','D'],size = length,replace= False)
-                a.append(r)
+                a.append(sorted(r))
         if length == 5:
             for k in range(1):
                 r = np.random.choice(['A','B','C','D','E','F'],size = length,replace= False)
-                a.append(r)
+                a.append(sorted(r))
 
 
 np.random.shuffle(a)
